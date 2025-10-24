@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Command Defense</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@700&display=swap');
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #0d0e14; /* Deep space background */
+            font-family: 'Space Mono', monospace;
+            color: #ffffff;
+            overflow: hidden;
+        }
+
+        .game-container {
+            border: 3px solid #00f0ff; /* Neon border */
+            box-shadow: 0 0 15px #00f0ff, inset 0 0 5px #00f0ff;
+            background-color: #000000;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(180deg, rgba(0,0,0,1) 0%, rgba(10, 10, 30, 1) 100%);
+            border-radius: 4px;
+        }
+
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 15px;
+            font-size: 1.1em;
+            color: #a0f9ff;
+        }
+
+        .controls-info {
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #7a8296;
+            line-height: 1.4;
+        }
+
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ff44aa;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 0 20px #ff44aa;
+            z-index: 10;
+            display: none; /* Initially hidden */
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        #message-box h2 {
+            color: #ff44aa;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        #message-box p {
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+
+        #restart-button {
+            background-color: #ff44aa;
+            color: #000000;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: 'Space Mono', monospace;
+            transition: background-color 0.2s, box-shadow 0.2s;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        #restart-button:hover {
+            background-color: #ff66bb;
+            box-shadow: 0 0 10px #ff44aa;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="hud">
+            <div>Score: <span id="score">0</span></div>
+            <div>Health: <span id="health">3</span></div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div class="controls-info">
+        <p>Controls: Use **Left/Right Arrow** or **A/D** to move. Press **Space** to shoot.</p>
+    </div>
+
+    <!-- Custom Message Box for Game Over -->
+    <div id="message-box">
+        <h2 id="message-title">GAME OVER</h2>
+        <p id="final-score-text">Final Score: 0</p>
+        <button id="restart-button">Restart</button>
+    </div>
+
+    <script>
+        // --- Game Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Make the canvas responsive and set size
+        const GAME_WIDTH = 400;
+        const GAME_HEIGHT = 600;
+        canvas.width = GAME_WIDTH;
+        canvas.height = GAME_HEIGHT;
+
+        const scoreElement = document.getElementById('score');
+        const healthElement = document.getElementById('health');
+        const messageBox = document.getElementById('message-box');
+        const restartButton = document.getElementById('restart-button');
+        const finalScoreText = document.getElementById('final-score-text');
+
+        let game;
+        let keys = {};
+        let lastUpdateTime = 0;
+        const FPS = 60;
+        const TARGET_FRAME_DURATION = 1000 / FPS;
+
+        // --- Utility Functions ---
+
+        /** Converts a base64 string to a Uint8Array */
+        function base64ToArrayBuffer(base64) {
+            const binary_string = window.atob(base64);
+            const len = binary_string.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary_string.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        /** Converts PCM data to a WAV Blob */
+        function pcmToWav(pcmData, sampleRate) {
+            const numChannels = 1;
+            const bytesPerSample = 2; // 16-bit PCM
+
+            const buffer = new ArrayBuffer(44 + pcmData.length * bytesPerSample);
+            const view = new DataView(buffer);
+
+            /* Utility function to write a string to the view */
+            function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            }
+
+            // RIFF chunk descriptor
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + pcmData.length * bytesPerSample, true); // Chunk size
+            writeString(view, 8, 'WAVE');
+
+            // FMT sub-chunk
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true); // Sub-chunk size (16 for PCM)
+            view.setUint16(20, 1, true); // Audio format (1 for PCM)
+            view.setUint16(22, numChannels, true); // Number of channels
+            view.setUint32(24, sampleRate, true); // Sample rate
+            view.setUint32(28, sampleRate * numChannels * bytesPerSample, true); // Byte rate
+            view.setUint16(32, numChannels * bytesPerSample, true); // Block align
+            view.setUint16(34, bytesPerSample * 8, true); // Bits per sample (16)
+
+            // Data sub-chunk
+            writeString(view, 36, 'data');
+            view.setUint32(40, pcmData.length * bytesPerSample, true); // Data size
+
+            // Write PCM data
+            for (let i = 0; i < pcmData.length; i++) {
+                view.setInt16(44 + i * bytesPerSample, pcmData[i], true);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+        
+        // --- Audio Logic for Sound Effects (SFX) ---
+        let audioContext;
+        let isAudioReady = false;
+        
+        function initAudio() {
+            if (isAudioReady) return;
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                isAudioReady = true;
+                console.log("Audio Context initialized.");
+            } catch (e) {
+                console.error("Web Audio API not supported:", e);
+            }
+        }
+
+        async function playSound(name) {
+            if (!isAudioReady) {
+                console.log("Audio not ready. Attempting to initialize.");
+                initAudio();
+                if (!isAudioReady) return;
+            }
+
+            let text, voiceName;
+            if (name === 'shoot') {
+                // A very short, crisp sound effect
+                text = "Zz";
+                voiceName = "Charon";
+            } else if (name === 'hit') {
+                // A slightly deeper impact sound
+                text = "Bop!";
+                voiceName = "Kore";
+            } else if (name === 'explosion') {
+                // A short, low sound for game over/impact
+                text = "Whoom";
+                voiceName = "Fenrir";
+            } else {
+                return;
+            }
+
+            // Using the TTS API for sound effects
+            const payload = {
+                contents: [{
+                    parts: [{ text: text }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: voiceName }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
+
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+
+            const maxRetries = 3;
+            let currentRetry = 0;
+            let success = false;
+            let result;
+
+            while (currentRetry < maxRetries && !success) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    
+                    result = await response.json();
+                    success = true;
+
+                } catch (error) {
+                    currentRetry++;
+                    console.warn(`TTS API call failed (Attempt ${currentRetry}): ${error.message}`);
+                    if (currentRetry < maxRetries) {
+                        const delay = Math.pow(2, currentRetry) * 100; // Exponential backoff (100ms, 200ms, 400ms)
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    }
+                }
+            }
+
+            if (!success || !result) {
+                console.error("Failed to generate audio after retries.");
+                return;
+            }
+
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType;
+
+            if (audioData && mimeType && audioContext) {
+                try {
+                    const sampleRateMatch = mimeType.match(/rate=(\d+)/);
+                    if (!sampleRateMatch) {
+                        console.error("Could not determine sample rate from MIME type.");
+                        return;
+                    }
+                    const sampleRate = parseInt(sampleRateMatch[1], 10);
+                    
+                    const pcmDataBuffer = base64ToArrayBuffer(audioData);
+                    const pcm16 = new Int16Array(pcmDataBuffer);
+                    
+                    // Create WAV Blob
+                    const wavBlob = pcmToWav(pcm16, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+
+                    // Decode and play the WAV data
+                    const audio = new Audio(audioUrl);
+                    audio.play().catch(e => console.error("Audio playback failed:", e));
+
+                } catch (e) {
+                    console.error("Error processing or playing audio:", e);
+                }
+            } else {
+                console.log("TTS response missing audio data or audioContext is null.");
+            }
+        }
+        
+        // --- Game Classes ---
+
+        class Player {
+            constructor(x, y) {
+                this.width = 30;
+                this.height = 30;
+                this.x = x;
+                this.y = y;
+                this.speed = 4;
+                this.color = '#00f0ff'; // Neon blue
+                this.maxHealth = 3;
+                this.health = this.maxHealth;
+                this.canShoot = true;
+                this.fireRate = 200; // milliseconds
+            }
+
+            move() {
+                if (keys['ArrowLeft'] || keys['a']) {
+                    this.x -= this.speed;
+                }
+                if (keys['ArrowRight'] || keys['d']) {
+                    this.x += this.speed;
+                }
+
+                // Keep player within bounds
+                if (this.x < 0) this.x = 0;
+                if (this.x + this.width > GAME_WIDTH) this.x = GAME_WIDTH - this.width;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                // Spaceship is a simple triangle
+                ctx.moveTo(this.x + this.width / 2, this.y); // Top point
+                ctx.lineTo(this.x, this.y + this.height);    // Bottom left
+                ctx.lineTo(this.x + this.width, this.y + this.height); // Bottom right
+                ctx.closePath();
+                ctx.fill();
+
+                // Draw thrust indicator (small rectangle at the bottom)
+                ctx.fillStyle = '#ff44aa';
+                ctx.fillRect(this.x + this.width / 2 - 4, this.y + this.height, 8, 5);
+            }
+
+            shoot() {
+                if (this.canShoot) {
+                    game.bullets.push(new Bullet(this.x + this.width / 2 - 1.5, this.y));
+                    this.canShoot = false;
+                    playSound('shoot');
+                    setTimeout(() => {
+                        this.canShoot = true;
+                    }, this.fireRate);
+                }
+            }
+
+            takeDamage() {
+                this.health--;
+                healthElement.textContent = this.health;
+                if (this.health <= 0) {
+                    game.isGameOver = true;
+                    playSound('explosion');
+                } else {
+                    playSound('hit');
+                }
+            }
+        }
+
+        class Bullet {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 3;
+                this.height = 8;
+                this.speed = 7;
+                this.color = '#ffaa00'; // Orange/yellow laser
+            }
+
+            move() {
+                this.y -= this.speed;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                // Simple glow effect
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = 5;
+                ctx.fillStyle = '#ffffff'; // Brighter center
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.shadowBlur = 0; // Reset shadow
+            }
+        }
+
+        class Enemy {
+            constructor(x, y, size, speed) {
+                this.x = x;
+                this.y = y;
+                this.size = size;
+                this.speed = speed;
+                this.color = '#ff44aa'; // Pink/magenta asteroid
+            }
+
+            move() {
+                this.y += this.speed;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                // Asteroid/Enemy is a simple circle
+                ctx.beginPath();
+                ctx.arc(this.x + this.size / 2, this.y + this.size / 2, this.size / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        class Game {
+            constructor() {
+                this.player = new Player(GAME_WIDTH / 2 - 15, GAME_HEIGHT - 50);
+                this.bullets = [];
+                this.enemies = [];
+                this.score = 0;
+                this.isGameOver = false;
+                this.enemySpawnTimer = 0;
+                this.enemySpawnRate = 120; // Lower number means faster spawning (in frames)
+            }
+
+            update() {
+                if (this.isGameOver) {
+                    this.showGameOver();
+                    return;
+                }
+
+                // Player movement and shooting
+                this.player.move();
+                if (keys[' ']) { // Spacebar for shooting
+                    this.player.shoot();
+                }
+
+                // Update Bullets
+                this.bullets.forEach((bullet, bIndex) => {
+                    bullet.move();
+                    // Check for out-of-bounds
+                    if (bullet.y < -bullet.height) {
+                        this.bullets.splice(bIndex, 1);
+                    }
+                });
+
+                // Update Enemies and spawning
+                this.enemySpawnTimer++;
+                if (this.enemySpawnTimer >= this.enemySpawnRate) {
+                    this.spawnEnemy();
+                    this.enemySpawnTimer = 0;
+                }
+
+                this.enemies.forEach((enemy, eIndex) => {
+                    enemy.move();
+
+                    // 1. Check for player collision (Enemy hits Player)
+                    if (this.checkCollision(this.player, enemy)) {
+                        this.player.takeDamage();
+                        this.enemies.splice(eIndex, 1); // Remove enemy after collision
+                        return; // Skip bullet collision check for this destroyed enemy
+                    }
+
+                    // 2. Check for out-of-bounds (Enemy passes Player)
+                    if (enemy.y > GAME_HEIGHT) {
+                        this.player.takeDamage();
+                        this.enemies.splice(eIndex, 1);
+                        return;
+                    }
+
+                    // 3. Check for bullet collision
+                    this.bullets.forEach((bullet, bIndex) => {
+                        if (this.checkCollision(bullet, enemy)) {
+                            this.score += 10;
+                            scoreElement.textContent = this.score;
+                            playSound('hit');
+                            this.bullets.splice(bIndex, 1); // Remove bullet
+                            this.enemies.splice(eIndex, 1); // Remove enemy
+                        }
+                    });
+                });
+
+                // Difficulty scaling (increase spawn rate/speed slightly over time)
+                if (this.score % 100 === 0 && this.score > 0 && this.enemySpawnRate > 30) {
+                    this.enemySpawnRate -= 1;
+                    if (this.enemySpawnRate % 5 === 0) {
+                         // Also slightly increase enemy speed for a challenge
+                         this.enemies.forEach(e => e.speed += 0.1);
+                    }
+                }
+
+                // Filter out destroyed bullets and enemies
+                this.bullets = this.bullets.filter(bullet => bullet.y > -bullet.height);
+                this.enemies = this.enemies.filter(enemy => enemy.y < GAME_HEIGHT);
+            }
+
+            draw() {
+                // Clear the canvas
+                ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+                // Draw game elements
+                this.player.draw();
+                this.bullets.forEach(bullet => bullet.draw());
+                this.enemies.forEach(enemy => enemy.draw());
+            }
+
+            spawnEnemy() {
+                const size = Math.random() * 20 + 10; // 10 to 30
+                const x = Math.random() * (GAME_WIDTH - size);
+                const speed = Math.random() * 1.5 + 1; // 1 to 2.5
+                this.enemies.push(new Enemy(x, -size, size, speed));
+            }
+
+            checkCollision(rect1, rect2) {
+                // Simple AABB (Axis-Aligned Bounding Box) collision check
+                // Assumes enemy is roughly a square for simplicity
+                const r1x = rect1.x;
+                const r1y = rect1.y;
+                const r1w = rect1.width || rect1.size;
+                const r1h = rect1.height || rect1.size;
+
+                const r2x = rect2.x;
+                const r2y = rect2.y;
+                const r2w = rect2.width || rect2.size;
+                const r2h = rect2.height || rect2.size;
+
+                return r1x < r2x + r2w &&
+                       r1x + r1w > r2x &&
+                       r1y < r2y + r2h &&
+                       r1y + r1h > r2y;
+            }
+
+            showGameOver() {
+                finalScoreText.textContent = `Final Score: ${this.score}`;
+                messageBox.style.display = 'flex';
+                // Stop listening to keyboard input temporarily
+                keys = {};
+            }
+        }
+
+        // --- Game Loop ---
+        function gameLoop(currentTime) {
+            requestAnimationFrame(gameLoop);
+
+            // Throttle FPS to keep physics stable
+            const deltaTime = currentTime - lastUpdateTime;
+
+            if (deltaTime >= TARGET_FRAME_DURATION) {
+                if (game && !game.isGameOver) {
+                    game.update();
+                    game.draw();
+                }
+                lastUpdateTime = currentTime - (deltaTime % TARGET_FRAME_DURATION);
+            }
+        }
+
+        function startGame() {
+            // Initialize audio context on first user interaction
+            initAudio();
+
+            game = new Game();
+            scoreElement.textContent = game.score;
+            healthElement.textContent = game.player.health;
+            messageBox.style.display = 'none';
+
+            // Reset keys state
+            keys = {};
+            
+            // Start the game loop if it's not already running
+            if (lastUpdateTime === 0) {
+                lastUpdateTime = performance.now();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // --- Event Listeners ---
+        
+        // Handle Key Presses (Move and Shoot)
+        window.addEventListener('keydown', (e) => {
+            const keyName = e.key.toLowerCase();
+            if (['arrowleft', 'arrowright', 'a', 'd', ' '].includes(keyName)) {
+                keys[keyName] = true;
+                e.preventDefault(); // Prevent spacebar from scrolling
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            const keyName = e.key.toLowerCase();
+            if (['arrowleft', 'arrowright', 'a', 'd', ' '].includes(keyName)) {
+                keys[keyName] = false;
+            }
+        });
+
+        // Handle Restart Button
+        restartButton.addEventListener('click', startGame);
+        
+        // Start the game on initial load, showing the game over screen as a start screen
+        window.onload = function() {
+            messageBox.style.display = 'flex';
+            document.getElementById('message-title').textContent = 'STAR COMMAND DEFENSE';
+            finalScoreText.textContent = 'Use arrows/A/D to move, Space to shoot.';
+            restartButton.textContent = 'Start Game';
+            
+            // Set up initial canvas size once on load
+            ctx.fillStyle = '#1e1e3f'; // Dark canvas fill
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        };
+
+        // Initialize audio context on first click interaction to comply with browser autoplay policies
+        document.body.addEventListener('click', initAudio, { once: true });
+
+    </script>
+</body>
+</html>
