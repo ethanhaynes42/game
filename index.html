@@ -3,249 +3,530 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emergency Shelter Finder</title>
-    <!-- Load Tailwind CSS -->
+    <title>Alabama Storm Shelter Directory</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Load Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Custom font import for aesthetics */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        :root {
+        body {
             font-family: 'Inter', sans-serif;
+            background-color: #f7f7f7;
         }
-        /* Custom scrollbar for a cleaner look */
-        ::-webkit-scrollbar {
+        .shelter-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .shelter-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* Custom scrollbar for better aesthetics */
+        .overflow-y-auto::-webkit-scrollbar {
             width: 8px;
         }
-        ::-webkit-scrollbar-thumb {
-            background-color: #6366f1; /* Indigo-500 */
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
             border-radius: 4px;
-        }
-        /* Style for the directions button hover effect */
-        .directions-btn:hover .icon-arrow {
-            transform: translateX(4px);
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
+<body class="min-h-screen">
 
-    <div class="max-w-4xl mx-auto p-4 md:p-8">
+<div class="max-w-4xl mx-auto p-4 md:p-8">
+    
+    <!-- Header -->
+    <header class="text-center py-6 bg-white shadow-lg rounded-xl mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Alabama Public Storm Shelters</h1>
+        <p class="mt-1 text-sm text-gray-500">A comprehensive, searchable directory of shelters across Marion, St. Clair, Tuscaloosa, Mobile, Colbert, Franklin, DeKalb, Lauderdale, Lawrence, Limestone, Jackson, and Morgan Counties.</p>
+    </header>
 
-        <!-- Header -->
-        <header class="text-center mb-10 bg-indigo-600 text-white p-6 rounded-xl shadow-lg">
-            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight mb-2">
-                Emergency Shelter Finder
-            </h1>
-            <p class="text-indigo-200 text-lg">
-                Find and get directions to the nearest severe weather shelter.
-            </p>
-        </header>
-
-        <!-- Filter/Search Section -->
-        <div class="bg-white p-6 rounded-xl shadow-md mb-8">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                <i data-lucide="filter" class="w-5 h-5 mr-2 text-indigo-600"></i>
-                Filter Shelters
-            </h2>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Filter by City -->
-                <div>
-                    <label for="city-input" class="block text-sm font-medium text-gray-700 mb-1">Filter by City Name</label>
-                    <input type="text" id="city-input" placeholder="e.g., Springfield" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
-                </div>
-
-                <!-- Filter by County -->
-                <div>
-                    <label for="county-input" class="block text-sm font-medium text-gray-700 mb-1">Filter by County Name</label>
-                    <input type="text" id="county-input" placeholder="e.g., Lincoln" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150">
-                </div>
-            </div>
-
-            <!-- Result Count and Clear Button -->
-            <div class="mt-4 flex justify-between items-center">
-                <p id="result-count" class="text-sm font-medium text-indigo-600">Showing 0 shelters.</p>
-                <button id="clear-filters" class="text-sm text-gray-500 hover:text-indigo-600 transition duration-150 p-2 rounded-lg">
-                    <i data-lucide="refresh-ccw" class="w-4 h-4 inline mr-1"></i>
-                    Clear Filters
-                </button>
-            </div>
-        </div>
-
-        <!-- Shelter List Display -->
-        <div id="shelter-list" class="space-y-4">
-            <!-- Shelter cards will be injected here by JavaScript -->
-        </div>
-
-        <!-- Initial/Empty State Message -->
-        <div id="empty-state" class="bg-white p-6 rounded-xl shadow-md text-center text-gray-500">
-            <i data-lucide="search-check" class="w-10 h-10 mx-auto mb-3 text-indigo-400"></i>
-            <p class="text-lg font-semibold">Start searching for shelters above.</p>
-            <p class="text-sm mt-1">Results will appear here as you type.</p>
-        </div>
-
-        <!-- Footer for context -->
-        <footer class="text-center mt-10 text-gray-400 text-xs">
-            <p>Note: This application uses mock data for demonstration purposes. In a real application, this data would be sourced from official emergency management agencies.</p>
-        </footer>
-
+    <!-- Search and Status Filter -->
+    <div class="flex flex-col md:flex-row gap-4 mb-8">
+        <input type="text" id="searchInput" onkeyup="filterShelters()" placeholder="Search by County, Town, or Location Name..." 
+               class="flex-grow p-3 border border-gray-300 rounded-lg shadow-inner focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+        
+        <select id="statusFilter" onchange="filterShelters()" 
+                class="p-3 border border-gray-300 rounded-lg shadow-inner bg-white cursor-pointer transition duration-150">
+            <option value="all">Filter by Status (All)</option>
+            <option value="Open">Open/Default Status</option>
+            <option value="CLOSED">CLOSED</option>
+        </select>
     </div>
 
-    <script>
-        // --- 1. MOCK DATASET ---
-        // This array simulates the data you would receive from a real shelter database.
-        // The lat/lon coordinates are used to generate the Google Maps directions link.
-        const shelters = [
-            { id: 1, name: "Community Center Shelter", address: "123 Main St", city: "Springfield", county: "Lincoln", lat: 39.7990, lon: -89.6500, capacity: 500, status: "Open" },
-            { id: 2, name: "High School Gym", address: "456 Oak Ave", city: "Springfield", county: "Lincoln", lat: 39.7800, lon: -89.6450, capacity: 800, status: "Open" },
-            { id: 3, name: "City Hall Annex", address: "789 Pine Rd", city: "Shelbyville", county: "Franklin", lat: 39.4600, lon: -86.0000, capacity: 300, status: "Limited" },
-            { id: 4, name: "Fire Station #5", address: "101 Maple Ln", city: "Capital City", county: "Lincoln", lat: 39.7700, lon: -89.6000, capacity: 50, status: "Open" },
-            { id: 5, name: "County Fairgrounds Pavilion", address: "202 Expo Blvd", city: "Ogdenville", county: "Madison", lat: 39.8500, lon: -89.7000, capacity: 1200, status: "Open" },
-            { id: 6, name: "Local Library Branch", address: "303 Book St", city: "Shelbyville", county: "Franklin", lat: 39.4550, lon: -86.0100, capacity: 150, status: "Open" },
-            { id: 7, name: "Town Hall Basement", address: "404 Civic Center Dr", city: "Brockway", county: "Morgan", lat: 40.0100, lon: -90.1000, capacity: 250, status: "Open" },
-            { id: 8, name: "Old Church Building", address: "505 Faith St", city: "Springfield", county: "Lincoln", lat: 39.7900, lon: -89.6300, capacity: 100, status: "Closed" },
-        ];
+    <!-- Shelter Listings Container -->
+    <div id="shelterContainer" class="space-y-6">
+        <!-- Shelters will be injected here by JavaScript -->
+        <div id="noResults" class="hidden text-center text-gray-500 p-8 border border-dashed rounded-lg">
+            <p class="text-lg font-semibold">No shelters match your current search or filter criteria.</p>
+            <p class="text-sm mt-1">Try adjusting your search terms or selecting 'All' for the status filter.</p>
+        </div>
+    </div>
 
-        // --- 2. DOM Elements ---
-        const cityInput = document.getElementById('city-input');
-        const countyInput = document.getElementById('county-input');
-        const shelterList = document.getElementById('shelter-list');
-        const emptyState = document.getElementById('empty-state');
-        const resultCount = document.getElementById('result-count');
-        const clearFiltersButton = document.getElementById('clear-filters');
+    <!-- Important Disclaimer -->
+    <footer class="mt-12 p-4 text-center bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+        <p class="font-bold">⚠️ IMPORTANT SAFETY NOTE:</p>
+        <p>Always verify the current operational status and opening times of any storm shelter with local officials (e.g., County EMA) before severe weather strikes. Locations listed as "CLOSED" should not be relied upon.</p>
+    </footer>
+</div>
 
-        // --- 3. HELPER FUNCTIONS ---
+<script>
+    // --- SHELTER DATA ---
+    const allShelters = [
+        // Marion County (Default status: Open)
+        { county: "Marion County", town: "Bear Creek", name: "Bishop Community Center Basement", address: "260 High Ave, Bear Creek", status: "Open" },
+        { county: "Marion County", town: "Bear Creek", name: "Behind Bishop Community Center", address: "252 Sprygler St, Bear Creek", status: "Open" },
+        { county: "Marion County", town: "Bear Creek", name: "Virginia Ave Shelter", address: "237 Virginia Ave, Bear Creek", status: "Open" },
+        { county: "Marion County", town: "Bear Creek", name: "Bear Creek Housing Authority", address: "8573 State Hwy 13, Bear Creek", status: "Open" },
+        { county: "Marion County", town: "Brilliant", name: "Behind Brilliant City Hall", address: "1279 Main Street, Brilliant", status: "Open" },
+        { county: "Marion County", town: "Brilliant", name: "Old Sunny Home Fire Dept", address: "13536 St Hwy 233, Brilliant", status: "Open" },
+        { county: "Marion County", town: "Byrd", name: "Byrd Fire Dept", address: "239 County Hwy 13, Detroit", status: "Open" },
+        { county: "Marion County", town: "Craft", name: "Craft Community Center", address: "7115 County Hwy 19, Haleyville", status: "Open" },
+        { county: "Marion County", town: "Guin", name: "District 5 Shop", address: "411 11th Avenue, Guin", status: "Open" },
+        { county: "Marion County", town: "Guin", name: "Collins Life Center", address: "581 14th St, Guin", status: "Open" },
+        { county: "Marion County", town: "Hackleburg", name: "Hackleburg Community Shelter", address: "542 Nix Rd Hackleburg", status: "Open" },
+        { county: "Marion County", town: "Hackleburg", name: "Hackleburg Water Board", address: "442 Back Street, Hackleburg", status: "Open" },
+        { county: "Marion County", town: "Hackleburg", name: "Hackleburg Housing Authority, Front", address: "443 Ray Rd, Hackleburg", status: "Open" },
+        { county: "Marion County", town: "Hackleburg", name: "Hackleburg Housing Authority, Back", address: "445 Ray Rd, Hackleburg", status: "Open" },
+        { county: "Marion County", town: "Hackleburg", name: "Co Hwy 12 and Gober Rd", address: "120 Gober Rd, Hackleburg", status: "Open" },
+        { county: "Marion County", town: "Hamilton", name: "Winigton Community", address: "4959 County Hwy 32", status: "Open" },
+        { county: "Marion County", town: "Hamilton", name: "Beside County Engineer/Solid Waste", address: "701 4th Ave SW, Hamilton", status: "Open" },
+        { county: "Marion County", town: "Hamilton", name: "Marion County Annex (2 Shelters)", address: "372 7th Ave SW, Hamilton", status: "Open" },
+        { county: "Marion County", town: "Hamilton", name: "Behind Hamilton Fire Dept", address: "555 6th/7th St SW, Hamilton", status: "Open" },
+        { county: "Marion County", town: "Hamilton", name: "Ragsdale Housing Authority", address: "690 Bexar Ave E, Hamilton", status: "Open" },
+        { county: "Marion County", town: "Hamilton", name: "Chestnut Cir Housing Authority", address: "700 Chestnut Circle, Hamilton", status: "Open" },
+        { county: "Marion County", town: "Hamilton", name: "Sullins School House", address: "4509 Co Hwy 49, Hamilton", status: "Open" },
+        { county: "Marion County", town: "Hodges", name: "Mt. View Church Parsonage Basement", address: "6282 State Hwy 187, Hodges", status: "Open" },
+        { county: "Marion County", town: "Pea Ridge", name: "Pea Ridge Fire Dept", address: "5704 Co Hwy 45, Guin", status: "Open" },
+        { county: "Marion County", town: "Rock City", name: "Beside Baccus Voting Building", address: "5175 County Hwy 38, Winfield", status: "Open" },
+        { county: "Marion County", town: "Shiloh", name: "District 1 Shop", address: "2495 St Hwy 187, Hamilton", status: "Open" },
+        { county: "Marion County", town: "Shottsville", name: "Shottsville Fire Dept (2 Shelters)", address: "396 Co Hwy 56, Hamilton", status: "Open" },
+        { county: "Marion County", town: "Shottsville", name: "Co Hwy 25/20 Intersection", address: "6925 Co Hwy 25, Hamilton", status: "Open" },
+        { county: "Marion County", town: "Twin", name: "Twin Community Center Safe Room", address: "421 Co Hwy 83, Guin", status: "Open" },
+        { county: "Marion County", town: "Twin", name: "Twin Town Hall", address: "6125 St Hwy 253, Guin", status: "Open" },
+        { county: "Marion County", town: "Winfield", name: "Winfield Community Safe Room", address: "126 City Hall St, Winfield", status: "Open" },
+        { county: "Marion County", town: "Winfield", name: "Near Meadowlark Rd & Windmere Dr", address: "1316 Meadowlark", status: "Open" },
 
-        /**
-         * Generates the HTML for a single shelter card.
-         * @param {object} shelter - The shelter object.
-         */
-        function createShelterCard(shelter) {
-            // Determine badge color based on status
-            let statusColor = '';
-            switch (shelter.status) {
-                case 'Open':
-                    statusColor = 'bg-green-100 text-green-800';
-                    break;
-                case 'Limited':
-                    statusColor = 'bg-yellow-100 text-yellow-800';
-                    break;
-                case 'Closed':
-                    statusColor = 'bg-red-100 text-red-800';
-                    break;
-                default:
-                    statusColor = 'bg-gray-100 text-gray-800';
+        // St. Clair County (Default status: Open - FEMA Storm Shelters)
+        { county: "St. Clair County", town: "Steele", name: "Town of Steele FEMA Storm Shelter", address: "145 Hillview Street, Steele, AL 35987", status: "Open" },
+        { county: "St. Clair County", town: "Ashville", name: "Courthouse Ashville Basement", address: "100 6th Ave, Ashville, AL 35953", status: "Open" },
+        { county: "St. Clair County", town: "Springville", name: "FEMA Storm Shelter #3 (Multiple Shelters)", address: "370 Springville Station Blvd, Springville, AL", status: "Open" },
+        { county: "St. Clair County", town: "Odenville", name: "Odenville FEMA Storm Shelter", address: "200 Alabama Street, Odenville, AL 35120", status: "Open" },
+        { county: "St. Clair County", town: "Riverside", name: "Riverside FEMA Storm Shelter", address: "379 Depot St, Riverside, AL 35135", status: "Open" },
+        { county: "St. Clair County", town: "Pell City", name: "Courthouse Pell City Basement", address: "1815 Cogswell Ave, Pell City, AL 35953", status: "Open" },
+
+        // Tuscaloosa Area (Status: CLOSED - per user data)
+        { county: "Tuscaloosa Area", town: "Big Sandy", name: "Big Sandy Elementary School", address: "12058 Upper Hull Rd, Tuscaloosa, AL 35405", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Brookwood", name: "Brookwood High School", address: "12250 George Richmond Parkway, Brookwood, AL 35444", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Brookwood", name: "Brookwood Storm Shelters", address: "15689 Highway 216, Brookwood, AL 35444", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Buhl", name: "Buhl Elementary", address: "11968 Buhl School Rd, Buhl, AL 35446", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Northport", name: "Carroll’s Creek VFD Shelter", address: "11580 Lary Lake Road, Northport, AL 35475", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Coaling", name: "Coaling Fire Department Shelters", address: "15150 Highway 11 N., Coaling, AL 35453", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Coaling", name: "Recreation Complex Shelter", address: "11297 Stephens Loop, Coaling, AL 35453", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Coaling", name: "Stone Gate Mobile Home Park Shelter", address: "15100 Stone Gate Dr., Coaling, AL 35453", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Coker", name: "Coker Storm Shelter", address: "11549 Eisenhower Dr., Coker, AL 35452", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Gordo", name: "Echola Storm Shelter", address: "14908 Echola Road, Gordo, AL 35466", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Northport", name: "Echols Middle School", address: "2701 Echols Ave, Northport, Alabama 35476", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Duncanville", name: "Hagler Storm Shelter", address: "15451 Hagler Coaling Road, Duncanville, AL 35456", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Holt", name: "Holt Community Tornado Shelter", address: "2000 41st Court, Holt, Alabama 35404", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Tuscaloosa", name: "Holt Elementary", address: "1001 Crescent Ridge Rd NE, Tuscaloosa, AL 35404", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Tuscaloosa", name: "Holt High School Shelter", address: "301 44th Ct. NE, Tuscaloosa, AL 35404", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Northport", name: "Lloyd Wood Education Center", address: "2300 26th Avenue, Northport, AL 35476", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Northport", name: "Montgomery VFD Shelter", address: "16780 Mormon Road, Northport, Alabama 35471", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Coker", name: "Mt. Olive VFD Shelter", address: "13322 Mt Olive Rd, Coker, AL 35452", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Fosters", name: "Myrtlewood Elementary Shelter", address: "14661 Gainsville Rd, Fosters, AL 35463", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Tuscaloosa", name: "Salvation Army Shelter Safe Room", address: "2902 Greensboro Avenue, Tuscaloosa, AL 35403", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Berry", name: "Samantha-Northside Park", address: "13003 Northside Road, Berry, AL 35546", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Buhl", name: "Sipsey Valley Middle", address: "15817 Romulus Road, Buhl, AL 35446", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Tuscaloosa", name: "Alberta School of Performing Arts", address: "2700 University Blvd. E, Tuscaloosa, AL 35404", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Tuscaloosa", name: "McDonald Hughes Center", address: "3101 Martin Luther King Jr Blvd, Tuscaloosa, Alabama 35401", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Tuscaloosa", name: "Northridge High School", address: "2901 Northridge Rd, Tuscaloosa, AL 35406", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Cottondale", name: "Paul W. Bryant High School", address: "6315 Mary Harmon Bryant Dr., Cottondale, AL 35453", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Tuscaloosa", name: "Skyland Elementary School", address: "408 Skyland Blvd. East, Tuscaloosa, AL 35405", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Tuscaloosa", name: "Career and Technology Academy", address: "2800 Martin Luther King Jr. Blvd., Tuscaloosa, AL 35401", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Tuscaloosa", name: "Tuscaloosa Magnet School", address: "315 McFarland Blvd E., Tuscaloosa, AL 35404", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Tuscaloosa", name: "University Place Elementary School", address: "2000 First Avenue, Tuscaloosa, AL 35401", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Vance", name: "Vance Storm Shelters (Past Dollar General)", address: "18344 Highway 11 N, Vance, AL 35490", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Vance", name: "Wallace Tingle Park Shelter", address: "17058 Tingle Tangle Rd, Vance, AL 35490", status: "CLOSED" },
+        { county: "Tuscaloosa Area", town: "Tuscaloosa", name: "Yellow Creek VFD Shelter", address: "16040 Yellow Creek Road, Tuscaloosa, AL 35406", status: "CLOSED" },
+
+        // Mobile County (Default status: Open)
+        { county: "Mobile County", town: "Chickasaw", name: "First Baptist Church", address: "92 5th Street, Chickasaw, AL 36611", status: "Open" },
+        { county: "Mobile County", town: "Mobile", name: "Ryan's Refuge", address: "554 South Craft Highway, Mobile, AL 36617", status: "Open" },
+        { county: "Mobile County", town: "Mobile", name: "Waterfront Rescue Mission", address: "279 North Washington Avenue, Mobile, AL 36603", status: "Open" },
+        { county: "Mobile County", town: "Mobile", name: "Salvation Army", address: "1009 Dauphin Street, Mobile, AL 36604", status: "Open" },
+        { county: "Mobile County", town: "Mobile", name: "McKemie Place (Call for instructions)", address: "Address not listed", status: "Open" },
+        { county: "Mobile County", town: "Mobile", name: "Central Presbyterian Church", address: "1260 Dauphin St., Mobile, AL 36604", status: "Open" },
+        { county: "Mobile County", town: "Fowl River", name: "Fowl River Community Center", address: "(Address not consistently listed)", status: "Open" },
+        { county: "Mobile County", town: "Theodore", name: "Theodore High School", address: "6201 Swedetown Road", status: "Open" },
+        { county: "Mobile County", town: "Semmes", name: "Semmes Middle School", address: "4566 Ed George Road", status: "Open" },
+        { county: "Mobile County", town: "Mobile", name: "Cranford Burns", address: "6175 Girby Road", status: "Open" },
+        { county: "Mobile County", town: "Mobile", name: "SPCA Pet Shelter", address: "620 Zeigler Circle West", status: "Open" },
+        
+        // --- NEW DATA ADDED BELOW ---
+
+        // Colbert County (Source: EMA 256-386-8558)
+        { county: "Colbert County", town: "Cherokee", name: "Allsboro", address: "959 Old Natchez Trace Rd., Cherokee", status: "Open" },
+        { county: "Colbert County", town: "Cherokee", name: "Barton", address: "53 Plaza Court, Cherokee", status: "Open" },
+        { county: "Colbert County", town: "Cherokee", name: "Cherokee Community Shelter", address: "1211 2nd St., Cherokee", status: "Open" },
+        { county: "Colbert County", town: "Cherokee", name: "Maud", address: "535 Gypsy Loop, Cherokee", status: "Open" },
+        { county: "Colbert County", town: "Cherokee", name: "North Red Rock", address: "3364 Red Rock Road, Cherokee", status: "Open" },
+        { county: "Colbert County", town: "Cherokee", name: "Rose Trail Park", address: "43 Rose Trail Park, Cherokee", status: "Open" },
+        { county: "Colbert County", town: "Cherokee", name: "Abbie Church Site", address: "11214 6TH ST", status: "Open" },
+        { county: "Colbert County", town: "Leighton", name: "LaGrange", address: "1648 Waldrep Loop, Leighton", status: "Open" },
+        { county: "Colbert County", town: "Leighton", name: "Leighton Town Shelter", address: "8856 Main Street, Leighton", status: "Open" },
+        { county: "Colbert County", town: "Leighton", name: "Underwood Crossroads", address: "12495 County Line Road, Leighton", status: "Open" },
+        { county: "Colbert County", town: "Littleville", name: "Littleville Town Shelter", address: "1448 Jackson Hwy, Littleville", status: "Open" },
+        { county: "Colbert County", town: "Muscle Shoals", name: "Colbert Alloys Park", address: "267 Alloys Park Ln, Muscle Shoals", status: "Open" },
+        { county: "Colbert County", town: "Muscle Shoals", name: "Ford City", address: "14439 County Line Rd., Muscle Shoals", status: "Open" },
+        { county: "Colbert County", town: "Muscle Shoals", name: "Nitrate City", address: "982 7th St., Muscle Shoals", status: "Open" },
+        { county: "Colbert County", town: "Muscle Shoals", name: "NW Shoals Community College", address: "105 Student Dr., Muscle Shoals", status: "Open" },
+        { county: "Colbert County", town: "Sheffield", name: "Appleton AV", address: "309 Appleton Ave., Sheffield", status: "Open" },
+        { county: "Colbert County", town: "Sheffield", name: "Manning Homes", address: "2312 NW 15th St., Sheffield", status: "Open" },
+        { county: "Colbert County", town: "Sheffield", name: "Rivermont", address: "423 Pickwick St., Sheffield", status: "Open" },
+        { county: "Colbert County", town: "Sheffield", name: "Michael Johnson Rec", address: "1920 NE 29th Street, Sheffield", status: "Open" },
+        { county: "Colbert County", town: "Tuscumbia", name: "Charity Chapel", address: "2999 Frankfort Road, Tuscumbia", status: "Open" },
+        { county: "Colbert County", town: "Tuscumbia", name: "Colbert Heights High School", address: "1614 Sunset Dr., Tuscumbia", status: "Open" },
+        { county: "Colbert County", town: "Tuscumbia", name: "County Road Dept.", address: "2842 Highway 20, Tuscumbia", status: "Open" },
+        { county: "Colbert County", town: "Tuscumbia", name: "Trenholm", address: "914 South Hickory Street", status: "Open" },
+        { county: "Colbert County", town: "Tuscumbia", name: "Trenholm (Southside of Tuscumbia)", address: "914 S Hickory St", status: "Open" },
+        { county: "Colbert County", town: "Tuscumbia", name: "Denton Road", address: "2844 Denton Rd., Tuscumbia", status: "Open" },
+        { county: "Colbert County", town: "Tuscumbia", name: "Highway 247", address: "4651 Highway 247, Tuscumbia", status: "Open" },
+        { county: "Colbert County", town: "Tuscumbia", name: "Locust Shores", address: "74 Golden Rd., Tuscumbia", status: "Open" },
+        { county: "Colbert County", town: "Tuscumbia", name: "Spring Valley", address: "7147 Coburn Mountain Rd., Tuscumbia", status: "Open" },
+
+        // Franklin County (Source: EMA 256-577-0750)
+        { county: "Franklin County", town: "Russellville", name: "Ralph Bishop Community Center", address: "201 Ash Avenue", status: "Open" },
+        { county: "Franklin County", town: "Russellville", name: "Old Jr. High School Lot", address: "511 Gains Avenue", status: "Open" },
+        { county: "Franklin County", town: "Russellville", name: "Russellville Fire Station 2", address: "15938 HWY 43 N", status: "Open" },
+        { county: "Franklin County", town: "Russellville", name: "Westside Plaza Apartments", address: "1100 Adams Avenue", status: "Open" },
+        { county: "Franklin County", town: "Russellville", name: "Franklin County Courthouse", address: "410 Jackson Avenue N", status: "Open" },
+        { county: "Franklin County", town: "Russellville", name: "First United Methodist Church", address: "311 Jackson Avenue N", status: "Open" },
+        { county: "Franklin County", town: "Russellville", name: "Chucky Mullins Center", address: "442 Hamilton Street", status: "Open" },
+        { county: "Franklin County", town: "Russellville", name: "Lee Sports Complex", address: "1851 Lawrence St. E", status: "Open" },
+        { county: "Franklin County", town: "Russellville", name: "Dillard Hollow", address: "90 Dillard Holler Rd.", status: "Open" },
+        { county: "Franklin County", town: "Russellville", name: "City Lake Dr (behind lower concession stand)", address: "1559 City Lake Dr.", status: "Open" },
+        { county: "Franklin County", town: "Phil Campbell", name: "Phil Campbell Community Center", address: "132 Sherry Bryce Dr.", status: "Open" },
+        { county: "Franklin County", town: "Phil Campbell", name: "Bedford Sports Complex", address: "351 Hwy. 63", status: "Open" },
+        { county: "Franklin County", town: "Phil Campbell", name: "Stalcup Circle", address: "19 Stalcup Circle", status: "Open" },
+        { county: "Franklin County", town: "Phil Campbell", name: "Nix Road Housing Authority", address: "3643 Nix Rd.", status: "Open" },
+        { county: "Franklin County", town: "Phil Campbell", name: "Pinion Drive Housing Authority", address: "Pinion Dr.", status: "Open" },
+        { county: "Franklin County", town: "Blue Springs", name: "Blue Springs Fire Department", address: "3001 HWY 75,", status: "Open" },
+        { county: "Franklin County", town: "East Franklin", name: "East Franklin (Hwy. 81/93 Intersection)", address: "10365 HWY 81", status: "Open" },
+        { county: "Franklin County", town: "Gravel Hill", name: "Gravel Hill Fire Department", address: "3675 Gravel Hill Road", status: "Open" },
+        { county: "Franklin County", town: "Union", name: "Union Community Center", address: "5588 HWY 93", status: "Open" },
+        { county: "Franklin County", town: "Tharptown", name: "Tharptown Fire Department", address: "23 HWY 93", status: "Open" },
+        { county: "Franklin County", town: "Belgreen", name: "Belgreen Fire Department", address: "14141 HWY 524", status: "Open" },
+        { county: "Franklin County", town: "Burnout", name: "Burnout Fire Department", address: "75 HWY 224", status: "Open" },
+        { county: "Franklin County", town: "Frankfort", name: "Frankfort Fire Department", address: "7464 HWY 41", status: "Open" },
+        { county: "Franklin County", town: "Frog Pond", name: "Frog Pond Fire Department", address: "5215 Highway 22", status: "Open" },
+        { county: "Franklin County", town: "Spruce Pine", name: "Spruce Pine Community Center", address: "9312 HWY 22", status: "Open" },
+        { county: "Franklin County", town: "Hodges", name: "Hodges City Hall", address: "1842 HWY 172", status: "Open" },
+        { county: "Franklin County", town: "Pleasant Site", name: "Pleasant Site Fire Department", address: "2785 HWY 90", status: "Open" },
+        { county: "Franklin County", town: "Vina", name: "Vina Fire Department", address: "79 Church Street", status: "Open" },
+        { county: "Franklin County", town: "Payne Creek", name: "Payne Creek", address: "575 Highway 48", status: "Open" },
+        { county: "Franklin County", town: "Town & Country", name: "Town & Country", address: "27630 Highway 24 E.", status: "Open" },
+        { county: "Franklin County", town: "Red Bay", name: "Tiny Tigers Preschool", address: "110 4th St. NE", status: "Open" },
+        { county: "Franklin County", town: "Red Bay", name: "First Methodist Church (pet friendly)", address: "509 4th Street SW", status: "Open" },
+        { county: "Franklin County", town: "Red Bay", name: "Red Bay Water Park Shelter 1 and 2", address: "640 2nd Ave. NE", status: "Open" },
+        { county: "Franklin County", town: "Red Bay", name: "Old Airport", address: "627 9th Ave. NW", status: "Open" },
+
+        // DeKalb County (Source: EMA 256-845-8569)
+        { county: "DeKalb County", town: "Crossville", name: "Crossville Community Shelter", address: "14521 AL Highway 68 (next to fire department)", status: "Open" },
+        { county: "DeKalb County", town: "Fort Payne", name: "DeKalb County Courthouse Tunnel", address: "210 Grand Avenue SW, Fort Payne", status: "Open" },
+        { county: "DeKalb County", town: "Fyffe", name: "Fyffe Community Shelter", address: "514 Campbell St. (next to town hall)", status: "Open" },
+        { county: "DeKalb County", town: "Geraldine", name: "Geraldine Community Shelter", address: "41303 AL Highway 75 (Behind town hall)", status: "Open" },
+        { county: "DeKalb County", town: "Henagar", name: "Henagar Community Shelter", address: "1106 Greenbriar Dr.", status: "Open" },
+        { county: "DeKalb County", town: "Ider", name: "Ider Community Shelter", address: "10808 AL Highway 75 (across from town hall)", status: "Open" },
+        { county: "DeKalb County", town: "Powell", name: "Powell Community Shelter", address: "110 Broad Street North (across from town hall)", status: "Open" },
+        { county: "DeKalb County", town: "Rainsville", name: "Rainsville Community Shelter", address: "76 Chavies Road (Behind Plainview School)", status: "Open" },
+        { county: "DeKalb County", town: "Rainsville", name: "Shiloh Shelter", address: "2489 Main St., Rainsville (Behind fire department)", status: "Open" },
+        { county: "DeKalb County", town: "Sylvania", name: "Sylvania Community Shelter", address: "14 Enterprise Street (Beside fire department)", status: "Open" },
+        { county: "DeKalb County", town: "Valley Head", name: "Valley Head Community Shelter", address: "9600 AL Highway 117 (Adjacent to city park)", status: "Open" },
+
+        // Lauderdale County (Source: EMA 256-760-6363)
+        { county: "Lauderdale County", town: "Lexington", name: "Bank Independent", address: "11250 Hwy. 101, Lexington", status: "Open" },
+        { county: "Lauderdale County", town: "Rogersville", name: "Rogersville Town Shelter", address: "36 Wheeler Street", status: "Open" },
+        { county: "Lauderdale County", town: "Elgin", name: "Elgin United Methodist Church", address: "2743 Hwy 101, Elgin", status: "Open" },
+        { county: "Lauderdale County", town: "Anderson", name: "First Baptist Church of Anderson", address: "245 Church St., Anderson", status: "Open" },
+        { county: "Lauderdale County", town: "Rogersville", name: "First Baptist Church of Rogersville", address: "222 College Street (County Road 26), Rogersville", status: "Open" },
+        { county: "Lauderdale County", town: "Killen", name: "Killen United Methodist Church", address: "201 J.C. Mauldin Hwy. Killen", status: "Open" },
+        { county: "Lauderdale County", town: "Killen", name: "Killen Church of Christ", address: "1560 HWY 72", status: "Open" },
+        { county: "Lauderdale County", town: "Lexington", name: "Lexington Town Hall (Old Vault Area)", address: "11060 Hwy. 101 (Don Michael), Lexington", status: "Open" },
+        { county: "Lauderdale County", town: "Florence", name: "North Wood United Methodist Church", address: "1129 Wills Avenue (Behind Wok-n-Roll in North Florence, next to SunTrust Bank) Florence", status: "Open" },
+        { county: "Lauderdale County", town: "Florence", name: "Oakland Methodist Church", address: "24305 Lauderdale County Highway 14, Florence", status: "Open" },
+        { county: "Lauderdale County", town: "Florence", name: "Petersville Church of Christ", address: "3601 Cloverdale Rd., Florence", status: "Open" },
+        { county: "Lauderdale County", town: "Florence", name: "Pleasant Hill United Methodist Church", address: "2705 County Rd 222, Florence", status: "Open" },
+        { county: "Lauderdale County", town: "Rogersville", name: "Rogersville (Hwy 101)", address: "2743 Highway 101", status: "Open" },
+        { county: "Lauderdale County", town: "Rogersville", name: "Rogersville Church of Christ", address: "450 College Street (County Road 26), Rogersville", status: "Open" },
+        { county: "Lauderdale County", town: "Rogersville", name: "Rogersville United Methodist Church", address: "51 Turner Lindsey Rd., Rogersville", status: "Open" },
+        { county: "Lauderdale County", town: "Florence", name: "Underwood/Petersville Community Center", address: "840 County Road 7 (Section Line Road), Florence", status: "Open" },
+        { county: "Lauderdale County", town: "Waterloo", name: "Williams Chapel Presbyterian Church", address: "6401 County Road 1 Waterloo", status: "Open" },
+        { county: "Lauderdale County", town: "Waterloo", name: "Waterloo Town Shelter", address: "Lauderdale County Highway 45/Pea Ridge Road (One block west of Main Street downtown)", status: "Open" },
+
+        // Lawrence County (Source: EMA 256-974-7641)
+        { county: "Lawrence County", town: "Moulton", name: "Moulton (Across road from Moulton Senior Center)", address: "14201 Court Street, Moulton", status: "Open" },
+        { county: "Lawrence County", town: "Moulton", name: "Moulton (Behind Western Sirloin Steakhouse)", address: "200 Almon Drive, Moulton", status: "Open" },
+        { county: "Lawrence County", town: "Mt Hope", name: "Mt. Hope Senior Center", address: "3142 County Road 460, Mt Hope", status: "Open" },
+        { county: "Lawrence County", town: "Trinity", name: "Caddo Veterans Park", address: "6229 County Road 214, Trinity", status: "Open" },
+        { county: "Lawrence County", town: "Town Creek", name: "Red Bank Park", address: "1933 County Road 314, Town Creek", status: "Open" },
+        { county: "Lawrence County", town: "Courtland", name: "Roy Coffey Park", address: "3581 Jefferson Street, Courtland", status: "Open" },
+        { county: "Lawrence County", town: "Town Creek", name: "Town Creek Shelter", address: "1025 Wallace Street, Town Creek", status: "Open" },
+        { county: "Lawrence County", town: "Hillsboro", name: "Hillsboro Town Shelter", address: "11720 Main Street, Hillsboro (South of the Railroad Tracks)", status: "Open" },
+        { county: "Lawrence County", town: "Speake", name: "Speake (Behind Speake Senior Site)", address: "6619 County Road 81, Danville", status: "Open" },
+        { county: "Lawrence County", town: "Town Creek", name: "Hatton Senior Center", address: "7044 Alabama Highway 101, Town Creek", status: "Open" },
+        { county: "Lawrence County", town: "Town Creek", name: "Hatton High School", address: "6909 Al Highway 101, Town Creek", status: "Open" },
+        { county: "Lawrence County", town: "Chalybeate", name: "Chalybeate (next to Fire Station)", address: "next door to the Chalybeate Fire Station on County Road 296", status: "Open" },
+        { county: "Lawrence County", town: "Wren", name: "Wren Community", address: "11440 Al Highway 33 Moulton", status: "Open" },
+        { county: "Lawrence County", town: "Five Points", name: "Five Points Community", address: "7301 County Road 87 Moulton (Next to Speake Fire Station Number 2)", status: "Open" },
+        { county: "Lawrence County", town: "Loosier", name: "Loosier Community", address: "3157 County Road 150, Town Creek", status: "Open" },
+
+        // Limestone County (Source: EMA 256-232-2631)
+        { county: "Limestone County", town: "Ardmore", name: "Ardmore City Hall", address: "25844 Main Street", status: "Open" },
+        { county: "Limestone County", town: "Ardmore", name: "Ardmore Community Center", address: "29910 Park Avenue", status: "Open" },
+        { county: "Limestone County", town: "Athens", name: "Ark of Promise Athens", address: "15159 Browns Ferry Road", status: "Open" },
+        { county: "Limestone County", town: "Clements", name: "Clements Volunteer Fire Department", address: "9158 U.S. Highway 72 West", status: "Open" },
+        { county: "Limestone County", town: "Athens", name: "Cowford", address: "14008 Grover Drive, Athens", status: "Open" },
+        { county: "Limestone County", town: "Elkmont", name: "Elkmont Volunteer Fire Department", address: "19663 Sandlin Road", status: "Open" },
+        { county: "Limestone County", town: "Anderson", name: "Goodsprings Volunteer Fire Dept.", address: "33634 AL Highway 99, Anderson", status: "Open" },
+        { county: "Limestone County", town: "Lester", name: "Lester Post Office", address: "30306 Lester Road", status: "Open" },
+        { county: "Limestone County", town: "Athens", name: "Owens Volunteer Fire Dept.", address: "17196 Glaze Road, Athens", status: "Open" },
+        { county: "Limestone County", town: "Athens", name: "Former Owens Elementary School", address: "21465 AL Highway 99, Athens", status: "Open" },
+        { county: "Limestone County", town: "Athens", name: "Pine Ridge", address: "10078 Settle Road, Athens", status: "Open" },
+        { county: "Limestone County", town: "Toney", name: "Oak Grove-Thach Volunteer Fire Dept.", address: "27718 McKee Road, Toney", status: "Open" },
+        { county: "Limestone County", town: "Athens", name: "Pleasant Grove Volunteer Fire Dept.", address: "9080 Upper Snake Road, Athens", status: "Open" },
+        { county: "Limestone County", town: "Lester", name: "West Limestone High School (After School Only)", address: "10945 School House Road, Lester", status: "Open" },
+        { county: "Limestone County", town: "Elkmont", name: "Wooley Springs Baptist Church", address: "26069 AL Highway 251, Elkmont", status: "Open" },
+        { county: "Limestone County", town: "Decatur (Area)", name: "Hands Across Decatur Community Warming and Cooling Center", address: "1027 5th Avenue Southeast, Decatur", status: "Open" },
+
+        // Jackson County (Source: EMA 256-574-9344)
+        { county: "Jackson County", town: "Bridgeport", name: "Bridgeport Shelter #1", address: "602 Broadway Ave., Bridgeport, AL 35772", status: "Open" },
+        { county: "Jackson County", town: "Bridgeport", name: "Bridgeport Shelter #2", address: "2101 5th St., Bridgeport, AL 35772", status: "Open" },
+        { county: "Jackson County", town: "Bridgeport", name: "Bridgeport Elementary School", address: "1014 Jacobs Ave, Bridgeport, AL 35740", status: "Open" },
+        { county: "Jackson County", town: "Bridgeport", name: "Bridgeport Middle School", address: "620 Jacobs Ave, Bridgeport, AL 35740", status: "Open" },
+        { county: "Jackson County", town: "Bryant", name: "Bryant Elementary School", address: "6645 Alabama Highway 73, Bryant, AL 35958", status: "Open" },
+        { county: "Jackson County", town: "Dutton", name: "Dutton Elementary School", address: "180 Main Street, Dutton AL 35744", status: "Open" },
+        { county: "Jackson County", town: "Hollywood", name: "Earnest Pruett Center of Technology", address: "29490 U. S. Highway 72, Hollywood, AL 35752", status: "Open" },
+        { county: "Jackson County", town: "Flat Rock", name: "Flat Rock Elementary School", address: "788 County Road 326, Flat Rock, AL 35966", status: "Open" },
+        { county: "Jackson County", town: "Higdon", name: "Higdon Park Storm Shelter", address: "28424 Al. Highway 71, Higdon, AL 35979", status: "Open" },
+        { county: "Jackson County", town: "Hollywood", name: "Hollywood Elementary School", address: "6369 County Road 33, Hollywood, AL 35752", status: "Open" },
+        { county: "Jackson County", town: "Scottsboro", name: "Jackson County Courthouse", address: "102 E. Laurel St., Scottsboro, AL 35768", status: "Open" },
+        { county: "Jackson County", town: "Langston", name: "Langston Shelter", address: "9277 County Road 67, Langston, AL 35755", status: "Open" },
+        { county: "Jackson County", town: "Section", name: "Macedonia Elementary School", address: "196 County Road 49, Section, AL 35772", status: "Open" },
+        { county: "Jackson County", town: "Stevenson", name: "North Jackson High School", address: "45549 Alabama Hwy 277, Stevenson, AL 35772", status: "Open" },
+        { county: "Jackson County", town: "Higdon", name: "North Sand Mountain High School", address: "29333 Alabama Highway 71, Higdon, AL 35979", status: "Open" },
+        { county: "Jackson County", town: "Paint Rock", name: "Paint Rock Shelter", address: "3881 U. S. 72, Paint Rock, AL 35764", status: "Open" },
+        { county: "Jackson County", town: "Pisgah", name: "Pisgah High School", address: "60 Metcalf St., Pisgah, AL 35765", status: "Open" },
+        { county: "Jackson County", town: "Pisgah", name: "Pisgah Community Shelter", address: "6209 County Road 88, Pisgah, AL 35765", status: "Open" },
+        { county: "Jackson County", town: "Princeton", name: "Princeton Park Storm Shelter", address: "325 County Road 3, Princeton, AL 35766", status: "Open" },
+        { county: "Jackson County", town: "Pisgah", name: "Rosalie Elementary School", address: "162 County Road 355, Pisgah, AL 35765", status: "Open" },
+        { county: "Jackson County", town: "Section", name: "Section High School", address: "141 Alabama Highway 71, Section, Al 35771", status: "Open" },
+        { county: "Jackson County", town: "Scottsboro", name: "Skyline High School", address: "897 County Road 25, Scottsboro, AL 35768", status: "Open" },
+        { county: "Jackson County", town: "Stevenson", name: "Stevenson Shelter #1", address: "802 Kentucky Ave., Stevenson, AL 35772", status: "Open" },
+        { county: "Jackson County", town: "Stevenson", name: "Stevenson Shelter #2", address: "905 E. 2rd St., Stevenson, AL 35772", status: "Open" },
+        { county: "Jackson County", town: "Stevenson", name: "Stevenson Shelter #3", address: "107 Tennessee Ave., Stevenson, AL 35772", status: "Open" },
+        { county: "Jackson County", town: "Stevenson", name: "Stevenson Elementary School", address: "930 Old Mt. Carmel Rd., Stevenson, AL 35772", status: "Open" },
+        { county: "Jackson County", town: "Stevenson", name: "Stevenson Middle School", address: "701 Kentucky Ave. Stevenson, AL 35772", status: "Open" },
+        { county: "Jackson County", town: "Woodville", name: "Woodville High School", address: "290 County Road 63, Woodville, AL 35776", status: "Open" },
+
+        // Morgan County (Source: EMA 256-351-4620)
+        { county: "Morgan County", town: "Decatur", name: "Austin High School (Non-School Hours Only)", address: "3004 Modaus Road, Decatur", status: "Open" },
+        { county: "Morgan County", town: "Union Grove", name: "Brindlee Mountain Volunteer Fire Dept", address: "4373 U.S. Hwy. 231 Union Grove, AL 35175", status: "Open" },
+        { county: "Morgan County", town: "Somerville", name: "Cotaco Volunteer Fire Dept", address: "6463 Hwy. 36 East Somerville, AL 35670", status: "Open" },
+        { county: "Morgan County", town: "Danville", name: "Danville Volunteer Fire Dept", address: "5798 Hwy. 36 W Danville, AL 35619", status: "Open" },
+        { county: "Morgan County", town: "Decatur", name: "Decatur City Hall", address: "402 Lee Street NE, Decatur, AL 35601", status: "Open" },
+        { county: "Morgan County", town: "Decatur", name: "Decatur High School (Non-School Hours Only)", address: "910 Somerville Road SE", status: "Open" },
+        { county: "Morgan County", town: "Eva", name: "Eva Volunteer Fire Dept", address: "4238 Eva Road Eva, Al 35621", status: "Open" },
+        { county: "Morgan County", town: "Decatur", name: "Flint City Volunteer Fire Department", address: "114 Oxmore Flint Rd SW Decatur, AL 35603", status: "Open" },
+        { county: "Morgan County", town: "Hartselle", name: "Hartselle High School (Non-School Hours Only)", address: "1000 Bethel Road NE Hartselle, AL 35640", status: "Open" },
+        { county: "Morgan County", town: "Danville", name: "Massey Volunteer Fire Dept", address: "386 Evergreen Road Danville, AL 35622", status: "Open" },
+        { county: "Morgan County", town: "Decatur", name: "Morgan County Courthouse Basement", address: "302 Lee St. N.E. Decatur, AL 35602", status: "Open" },
+        { county: "Morgan County", town: "Danville", name: "Neel Volunteer Fire Dept", address: "70 Neel School Road Danville, AL 35622", status: "Open" },
+        { county: "Morgan County", town: "Hartselle", name: "Oak Ridge VFD Station 1", address: "200 NW Simmons Road Hartselle, AL 35640", status: "Open" },
+        { county: "Morgan County", town: "Hartselle", name: "Oak Ridge VFD Station 2", address: "2580 Vaughn Bridge Rd Hartselle, AL 35640", status: "Open" },
+        { county: "Morgan County", town: "Priceville", name: "Priceville High School (Non-School Hours Only)", address: "2650 North Bethel Road, Decatur, AL 35603", status: "Open" },
+        { county: "Morgan County", town: "Danville", name: "Punkin Center Volunteer Fire Dept", address: "116 Kirby Bridge Road Danville, AL 35619", status: "Open" },
+        { county: "Morgan County", town: "Eva", name: "Shorty Ryan Park", address: "3824 Eva Road Eva, AL 35621", status: "Open" },
+        { county: "Morgan County", town: "Somerville", name: "Somerville Community Shelter (1)", address: "192 Broad St. Somerville, AL 35670", status: "Open" },
+        { county: "Morgan County", town: "Somerville", name: "Somerville Community Shelter (2)", address: "72 Cross Creek Loop Somerville, AL 35670", status: "Open" },
+        { county: "Morgan County", town: "Hartselle", name: "Somerville VFD, Station 2", address: "122 Perkins Wood Road Hartselle, AL 35640", status: "Open" },
+        { county: "Morgan County", town: "Trinity", name: "Trinity Town Hall", address: "35 Preston Drive Trinity, AL 35673", status: "Open" },
+
+        // Marshall County (Source: EMA 256-571-7329) - Shelters
+        { county: "Marshall County", town: "Grant", name: "Grant Storm Shelter", address: "21 1st Avenue West", status: "Open" },
+        { county: "Marshall County", town: "Grant", name: "Grant Senior Center Storm Shelter", address: "307 2nd Avenue West", status: "Open" },
+        { county: "Marshall County", town: "Grant", name: "Simpson Point Storm Shelter", address: "5743 Simpson Point Road, Grant", status: "Open" },
+        { county: "Marshall County", town: "Grant", name: "Hebron Volunteer Fire Department", address: "90 Hebron School Road, Grant", status: "Open" },
+        { county: "Marshall County", town: "Union Grove", name: "Union Grove Storm Shelter", address: "3680 Union Grove Road", status: "Open" },
+        { county: "Marshall County", town: "Arab", name: "Arab Storm Shelter", address: "3850 Eddy Scant City Road", status: "Open" },
+        { county: "Marshall County", town: "Guntersville", name: "Georgia Mountain Volunteer Fire Department", address: "2485 Georgia Mountain Road, Guntersville", status: "Open" },
+        { county: "Marshall County", town: "Guntersville", name: "Riverview Storm Shelter", address: "1345 Cha-La-Kee Road, Guntersville", status: "Open" },
+        { county: "Marshall County", town: "Horton", name: "Nixon Chapel Storm Shelter", address: "7925 Nixon Chapel Road, Horton", status: "Open" },
+        { county: "Marshall County", town: "Douglas", name: "Douglas Storm Shelter", address: "55 HWY 188", status: "Open" },
+        { county: "Marshall County", town: "Boaz", name: "Whitesville Storm Shelter", address: "118 Whitesville Church Road, Boaz", status: "Open" },
+        { county: "Marshall County", town: "Albertville", name: "Pleasant Grove Storm Shelter", address: "7275 Section Line Road, Albertville", status: "Open" },
+        { county: "Marshall County", town: "Albertville", name: "Martling Asbury Storm Shelter", address: "4059 Martling Road, Albertville", status: "Open" },
+        { county: "Marshall County", town: "Guntersville", name: "Claysville Storm Shelter", address: "22165 U.S. HWY 431, Guntersville", status: "Open" },
+        { county: "Marshall County", town: "Langston", name: "Wakefield Volunteer Fire Department", address: "777 South Sauty Road, Langston", status: "Open" },
+        { county: "Marshall County", town: "Swearengin", name: "Swearengin Storm Shelter", address: "5120 Swearengin Road, Swearengin", status: "Open" },
+        // Marshall County (Source: EMA 256-571-7329) - Places of Refuge (Note: Not rated to withstand tornadoes)
+        { county: "Marshall County", town: "Union Grove", name: "Union Grove Senior Center (Refuge Only)", address: "3925 Union Grove Road", status: "Open" },
+        { county: "Marshall County", town: "Arab", name: "Hallmark Safe House (Refuge Only)", address: "1536 N Brindlee Mountain Parkway, Arab", status: "Open" },
+        { county: "Marshall County", town: "Arab", name: "Arab Senior Center (Refuge Only)", address: "800 N Main Street", status: "Open" },
+        { county: "Marshall County", town: "Guntersville", name: "St Williams Catholic Church (Refuge Only)", address: "929 Gunter Avenue, Guntersville", status: "Open" },
+        { county: "Marshall County", town: "Albertville", name: "Albertville Board of Education (Refuge Only)", address: "107 W Main Street", status: "Open" },
+        { county: "Marshall County", town: "Horton", name: "Oak Grove Methodist Church (Refuge Only)", address: "Oak Grove Road, Horton", status: "Open" },
+    ];
+
+    // Function to group shelters by county
+    function groupSheltersByCounty(shelters) {
+        return shelters.reduce((acc, shelter) => {
+            if (!acc[shelter.county]) {
+                acc[shelter.county] = [];
             }
+            acc[shelter.county].push(shelter);
+            return acc;
+        }, {});
+    }
 
-            // Create the Google Maps URL for directions
-            const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${shelter.lat},${shelter.lon}`;
+    // Function to render the list
+    function renderShelters(shelters) {
+        const container = document.getElementById('shelterContainer');
+        const groupedShelters = groupSheltersByCounty(shelters);
+        
+        container.innerHTML = '';
+        
+        // Safely access the noResults element and hide it initially
+        const noResultsElement = document.getElementById('noResults');
+        if (noResultsElement) {
+            noResultsElement.classList.add('hidden');
+        }
 
-            return `
-                <div class="bg-white p-5 rounded-xl border border-gray-200 hover:shadow-lg transition duration-300">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3">
-                        <h3 class="text-xl font-bold text-gray-900">${shelter.name}</h3>
-                        <span class="mt-2 sm:mt-0 px-3 py-1 text-xs font-semibold rounded-full ${statusColor}">
-                            Status: ${shelter.status}
-                        </span>
-                    </div>
+        if (shelters.length === 0) {
+            if (noResultsElement) {
+                noResultsElement.classList.remove('hidden');
+            }
+            return;
+        }
 
-                    <div class="text-gray-600 space-y-1 mb-4 text-sm">
-                        <p class="flex items-center"><i data-lucide="map-pin" class="w-4 h-4 mr-2 text-indigo-500"></i> ${shelter.address}</p>
-                        <p class="flex items-center"><i data-lucide="home" class="w-4 h-4 mr-2 text-indigo-500"></i> ${shelter.city}, ${shelter.county} County</p>
-                        <p class="flex items-center"><i data-lucide="users" class="w-4 h-4 mr-2 text-indigo-500"></i> Capacity: ${shelter.capacity} (Mock)</p>
-                    </div>
-
-                    <a href="${directionsUrl}" target="_blank" class="directions-btn inline-flex items-center justify-center w-full sm:w-auto px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-300 group">
-                        Get Directions
-                        <i data-lucide="arrow-right" class="icon-arrow w-4 h-4 ml-2 transition-transform duration-300"></i>
-                    </a>
-                </div>
+        Object.keys(groupedShelters).forEach(county => {
+            const countyGroup = groupedShelters[county];
+            
+            // Create accordion header/button
+            const header = document.createElement('div');
+            header.className = 'bg-blue-600 hover:bg-blue-700 text-white p-4 cursor-pointer rounded-t-xl shadow-md flex justify-between items-center transition duration-150';
+            header.setAttribute('data-county', county);
+            header.setAttribute('aria-expanded', 'true');
+            header.innerHTML = `
+                <h2 class="text-xl font-semibold">${county} (${countyGroup.length} Shelters)</h2>
+                <svg id="arrow-${county.replace(/\s/g, '-')}" class="w-6 h-6 transform rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
             `;
-        }
 
-        /**
-         * Renders the filtered list of shelters to the DOM.
-         * @param {Array<object>} filteredShelters - The array of shelters to display.
-         */
-        function renderShelters(filteredShelters) {
-            shelterList.innerHTML = ''; // Clear previous results
-            resultCount.textContent = `Showing ${filteredShelters.length} shelters.`;
+            // Create shelter list body
+            const body = document.createElement('div');
+            body.id = county.replace(/\s/g, '-') + '-body';
+            body.className = 'bg-white rounded-b-xl border border-gray-200 divide-y divide-gray-100 overflow-hidden shadow-lg';
+            
+            countyGroup.forEach(shelter => {
+                const isClosed = shelter.status === "CLOSED";
+                // Added a distinction for the "Refuge Only" type of shelter from Marshall County
+                const isRefuge = shelter.name.includes("(Refuge Only)");
+                
+                let bgColor = isClosed ? 'bg-red-50' : 'hover:bg-gray-50';
+                if (isRefuge) {
+                     // Use a subtle gray background for "Refuge Only" places
+                    bgColor = 'bg-gray-100 hover:bg-gray-200';
+                }
 
-            if (filteredShelters.length === 0 && (cityInput.value.trim() || countyInput.value.trim())) {
-                // If filters are applied but no results found
-                emptyState.innerHTML = `
-                    <i data-lucide="alert-triangle" class="w-10 h-10 mx-auto mb-3 text-yellow-400"></i>
-                    <p class="text-lg font-semibold">No shelters match your criteria.</p>
-                    <p class="text-sm mt-1">Try broadening your search or checking spelling.</p>
+                const card = document.createElement('div');
+                card.className = `shelter-card p-4 transition duration-150 ${bgColor}`;
+                
+                let statusBadge = '';
+                if (isClosed) {
+                    statusBadge = `<span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">CLOSED</span>`;
+                } else if (isRefuge) {
+                    statusBadge = `<span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">REFUGE ONLY*</span>`;
+                }
+                else if (shelter.status === "Open") {
+                     statusBadge = `<span class="inline-flex items-center px-3 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">OPEN</span>`;
+                }
+
+                card.innerHTML = `
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                        <div class="mb-2 sm:mb-0">
+                            <p class="text-lg font-bold text-gray-800">${shelter.name.replace(' (Refuge Only)', '')}</p>
+                            <p class="text-sm text-gray-500">${shelter.town} | ${shelter.address}</p>
+                        </div>
+                        ${statusBadge}
+                    </div>
                 `;
-                emptyState.classList.remove('hidden');
-            } else if (filteredShelters.length === 0) {
-                // Initial empty state
-                emptyState.innerHTML = `
-                    <i data-lucide="search-check" class="w-10 h-10 mx-auto mb-3 text-indigo-400"></i>
-                    <p class="text-lg font-semibold">Start searching for shelters above.</p>
-                    <p class="text-sm mt-1">Results will appear here as you type.</p>
-                `;
-                emptyState.classList.remove('hidden');
-            } else {
-                emptyState.classList.add('hidden');
-                // Render the cards
-                filteredShelters.forEach(shelter => {
-                    shelterList.innerHTML += createShelterCard(shelter);
-                });
-                // Re-initialize Lucide icons for newly added HTML
-                lucide.createIcons();
-            }
-        }
-
-        /**
-         * Main function to filter shelters based on current input values.
-         */
-        function filterShelters() {
-            const cityQuery = cityInput.value.trim().toLowerCase();
-            const countyQuery = countyInput.value.trim().toLowerCase();
-
-            const filtered = shelters.filter(shelter => {
-                const cityMatch = shelter.city.toLowerCase().includes(cityQuery);
-                const countyMatch = shelter.county.toLowerCase().includes(countyQuery);
-
-                // Check if *both* queries match, or if one is empty and the other matches.
-                // If both queries are empty, all shelters match.
-                if (!cityQuery && !countyQuery) return true;
-                if (cityQuery && countyQuery) return cityMatch && countyMatch;
-                if (cityQuery) return cityMatch;
-                if (countyQuery) return countyMatch;
+                body.appendChild(card);
             });
+            
+            const groupWrapper = document.createElement('div');
+            groupWrapper.className = 'county-group';
+            groupWrapper.appendChild(header);
+            groupWrapper.appendChild(body);
+            container.appendChild(groupWrapper);
 
-            renderShelters(filtered);
-        }
+            // Add toggle functionality
+            header.addEventListener('click', () => {
+                const isVisible = body.classList.toggle('hidden');
+                const arrow = document.getElementById(`arrow-${county.replace(/\s/g, '-')}`);
+                if (arrow) {
+                    arrow.classList.toggle('rotate-90', !isVisible);
+                    arrow.classList.toggle('rotate-0', isVisible);
+                }
+                header.setAttribute('aria-expanded', !isVisible);
 
-        /**
-         * Clears all filters and re-renders the full list.
-         */
-        function clearFilters() {
-            cityInput.value = '';
-            countyInput.value = '';
-            filterShelters(); // Re-run filter, which will now show all
-        }
+                // Adjust rounded corners when collapsing
+                if (isVisible) {
+                    header.classList.remove('rounded-b-xl');
+                    header.classList.add('rounded-xl');
+                } else {
+                    header.classList.remove('rounded-xl');
+                    header.classList.add('rounded-t-xl');
+                }
+            });
+            
+            // By default, collapse if county has "Tuscaloosa" or "Mobile" in the name
+            if (county.includes("Tuscaloosa") || county.includes("Mobile")) {
+                body.classList.add('hidden');
+                const arrow = document.getElementById(`arrow-${county.replace(/\s/g, '-')}`);
+                if (arrow) {
+                    arrow.classList.remove('rotate-90');
+                    arrow.classList.add('rotate-0');
+                }
+                header.classList.remove('rounded-t-xl');
+                header.classList.add('rounded-xl');
+            }
+        });
+    }
 
-        // --- 4. EVENT LISTENERS & INITIALIZATION ---
+    // Function to handle filtering and searching
+    function filterShelters() {
+        const searchInput = document.getElementById('searchInput').value.toLowerCase();
+        const statusFilter = document.getElementById('statusFilter').value;
 
-        // Listen for input changes in both fields
-        cityInput.addEventListener('input', filterShelters);
-        countyInput.addEventListener('input', filterShelters);
+        const filtered = allShelters.filter(shelter => {
+            const searchMatch = (
+                shelter.county.toLowerCase().includes(searchInput) ||
+                shelter.town.toLowerCase().includes(searchInput) ||
+                shelter.name.toLowerCase().includes(searchInput) ||
+                shelter.address.toLowerCase().includes(searchInput)
+            );
 
-        // Listen for the clear button click
-        clearFiltersButton.addEventListener('click', clearFilters);
+            const statusMatch = (statusFilter === 'all' || shelter.status === statusFilter);
 
-        // Initial render of all shelters when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            filterShelters();
-            // Also initialize Lucide icons for the static header/filter section
-            lucide.createIcons();
+            return searchMatch && statusMatch;
         });
 
-    </script>
+        renderShelters(filtered);
+    }
+
+    // Initialize the directory on load
+    window.onload = function() {
+        renderShelters(allShelters);
+    };
+
+</script>
+
 </body>
 </html>
